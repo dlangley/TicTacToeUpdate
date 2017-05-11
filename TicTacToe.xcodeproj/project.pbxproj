@@ -12,6 +12,8 @@
 		53320F2C1EB1460B005D0514 /* Main.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = 53320F2A1EB1460B005D0514 /* Main.storyboard */; };
 		53320F2E1EB1460B005D0514 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 53320F2D1EB1460B005D0514 /* Assets.xcassets */; };
 		53320F311EB1460B005D0514 /* LaunchScreen.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = 53320F2F1EB1460B005D0514 /* LaunchScreen.storyboard */; };
+		53320F391EB25F41005D0514 /* TTTImageView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 53320F381EB25F41005D0514 /* TTTImageView.swift */; };
+		53320F3B1EB2614E005D0514 /* MPCHandler.swift in Sources */ = {isa = PBXBuildFile; fileRef = 53320F3A1EB2614E005D0514 /* MPCHandler.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -22,6 +24,8 @@
 		53320F2D1EB1460B005D0514 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		53320F301EB1460B005D0514 /* Base */ = {isa = PBXFileReference; lastKnownFileType = file.storyboard; name = Base; path = Base.lproj/LaunchScreen.storyboard; sourceTree = "<group>"; };
 		53320F321EB1460B005D0514 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
+		53320F381EB25F41005D0514 /* TTTImageView.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = TTTImageView.swift; sourceTree = "<group>"; };
+		53320F3A1EB2614E005D0514 /* MPCHandler.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = MPCHandler.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -57,6 +61,8 @@
 				53320F261EB1460B005D0514 /* AppDelegate.swift */,
 				53320F281EB1460B005D0514 /* ViewController.swift */,
 				53320F2A1EB1460B005D0514 /* Main.storyboard */,
+				53320F381EB25F41005D0514 /* TTTImageView.swift */,
+				53320F3A1EB2614E005D0514 /* MPCHandler.swift */,
 				53320F2D1EB1460B005D0514 /* Assets.xcassets */,
 				53320F2F1EB1460B005D0514 /* LaunchScreen.storyboard */,
 				53320F321EB1460B005D0514 /* Info.plist */,
@@ -138,7 +144,9 @@
 			buildActionMask = 2147483647;
 			files = (
 				53320F291EB1460B005D0514 /* ViewController.swift in Sources */,
+				53320F3B1EB2614E005D0514 /* MPCHandler.swift in Sources */,
 				53320F271EB1460B005D0514 /* AppDelegate.swift in Sources */,
+				53320F391EB25F41005D0514 /* TTTImageView.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -304,6 +312,7 @@
 				53320F371EB1460B005D0514 /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
 		};
 /* End XCConfigurationList section */
 	};
