@@ -10,23 +10,30 @@ import UIKit
 
 class TTTImageView: UIImageView {
 
-    var player: String?
-    var isActivated = false
+    var player: String? {
+        didSet {
+            isAvailable = false
+        }
+    }
+    
+    var isAvailable = true {
+        willSet {
+            guard newValue == false else {
+                player = ""
+                image = nil
+                return
+            }
+            image = player! == "x" ? #imageLiteral(resourceName: "x") : #imageLiteral(resourceName: "o")
+        }
+    }
+    
     
     func setPlayer(_player: String) {
-        guard !isActivated else {
-            
-            return
-        }
-        
         player = _player
-        
-        guard _player == "x" else {
-            image = #imageLiteral(resourceName: "o")
-            return
-        }
-        
-        image = #imageLiteral(resourceName: "x")
-        isActivated = true
+    }
+    
+    func reset() {
+        player = ""
+        isAvailable = true
     }
 }

@@ -30,22 +30,8 @@ class ViewController: UIViewController {
     }
     
     @IBAction func newGame(_ sender: UIBarButtonItem) {
-        emptyFields()
-        
-        let messageDict = ["string":"New Game"]
-        var messageData : Data
-        var error: NSError?
-        do {
-            messageData = try JSONSerialization.data(withJSONObject: messageDict, options: .prettyPrinted)
-        } catch {
-            print("Error")
-            return
-        }
-        do {
-            try appDelegate.mpcHandler.session.send(messageData, toPeers: appDelegate.mpcHandler.session.connectedPeers, with: .reliable)
-        } catch {
-            print("Error sending")
-        }
+        resetGame()
+        package(json: ["string":"New Game"])
     }
     
     override func viewDidLoad() {
@@ -55,13 +41,14 @@ class ViewController: UIViewController {
         appDelegate.mpcHandler.setupSession()
         appDelegate.mpcHandler.advertiseSelf(shouldAdvertise: true)
         
-        NotificationCenter.default.addObserver(self, selector: #selector(ViewController.peerChangedState(with:)), name: NSNotification.Name.init(rawValue: "MPC_DidChangeStateNotification"), object: nil)
+        NotificationCenter.default.addObserver(self, selector: #selector(ViewController.peerChangedState(with:)), name: NSNotification.Name.init(rawValue: "MPC_DidChangeState_Notification"), object: nil)
         NotificationCenter.default.addObserver(self, selector: #selector(ViewController.handleReceivedData(with:)), name: NSNotification.Name.init(rawValue: "MPC_DidReceiveData_Notification"), object: nil)
         
         setupFields()
         currentPlayer = "x"
     }
     
+    /// Updates the screen with connection status.
     func peerChangedState(with notification: Notification) {
         
         guard let userInfo = notification.userInfo else {
@@ -94,18 +81,12 @@ class ViewController: UIViewController {
         
         let senderID = userInfo["peerID"] as! MCPeerID
         let senderName = senderID.displayName
-        var message = [String: Any]()
+        var message = unpack(json: receivedData)
         
-        do {
-            message = try! JSONSerialization.jsonObject(with: receivedData, options: .allowFragments) as! [String : Any]
-        } catch {
-            print("error parsing message")
-        }
-        
-        guard String(describing: message["string"]) != "New Game" else {
+        guard message["string"] as? String != "New Game" else {
             let alert = UIAlertController(title: "Tic Tac Toe", message: "New Game!!!", preferredStyle: .alert)
             alert.addAction(UIAlertAction(title: "OK", style: .default, handler: { (alert) in
-                self.emptyFields()
+                self.resetGame()
             }))
             present(alert, animated: true, completion: nil)
             return
@@ -117,74 +98,37 @@ class ViewController: UIViewController {
         }
         fields[space].setPlayer(_player: player)
         currentPlayer = player == "o" ? "x" : "o"
-        
-        checkResults(with: player, at: space)
     }
     
     func checkResults(with player: String, at space: Int) {
-        var winner = false
         let wins = [[0,1,2], [3,4,5], [6,7,8], [0,3,6], [1,4,7], [2,5,8], [0,4,8], [2,4,6]]
         
         for fieldSet in wins where fieldSet.contains(space){
-            var spaces = Set<String>()
+            let spaces = uniqueSpaces(from: fieldSet)
             
-            for field in fieldSet {
-                guard let spaceMark = fields[field].player else {
-                    return
-                }
-                
-                spaces.insert(spaceMark)
+            guard spaces.count > 1 else {
+                let alert = UIAlertController(title: "Tic Tac Toe", message: "\(player) WINS!!!", preferredStyle: .alert)
+                alert.addAction(UIAlertAction(title: "OK", style: .default, handler:  { (alert) in
+                    self.gameOver()
+                }))
+                present(alert, animated: true, completion: nil)
+                break
             }
-            
-            winner = spaces.count <= 1
-            
         }
-        
-        if winner {
-            let alert = UIAlertController(title: "Tic Tac Toe", message: "\(player) WINS!!!", preferredStyle: .alert)
-            alert.addAction(UIAlertAction(title: "OK", style: .default, handler: { (alert) in
-                self.emptyFields()
-            }))
-            present(alert, animated: true, completion: nil)
-        }
-    }
-    
-    func setupFields() {
-        for index in 0 ..< fields.count {
-            let gestureRecognizer = UITapGestureRecognizer(target: self, action: #selector(ViewController.fieldTapped(recognizer:)))
-            gestureRecognizer.numberOfTapsRequired = 1
-            fields[index].addGestureRecognizer(gestureRecognizer)
-        }
-    }
-    
-    func emptyFields() {
-        for index in 0 ..< fields.count {
-            fields[index].player = ""
-            fields[index].image = nil
-            fields[index].isActivated = false
-        }
-        
-        currentPlayer = "x"
     }
     
     func fieldTapped(recognizer: UITapGestureRecognizer) {
-        let tappedField = recognizer.view as! TTTImageView
-        tappedField.setPlayer(_player: currentPlayer)
         
-        let messageDict : [String : Any] = ["field": tappedField.tag, "player": currentPlayer]
-        var messageData : Data
-        var error: NSError?
-        do {
-            messageData = try JSONSerialization.data(withJSONObject: messageDict, options: .prettyPrinted)
-        } catch {
-            print("Error")
+        let tappedField = recognizer.view as! TTTImageView
+        
+        guard tappedField.isAvailable else {
+            print("Field already selected, no action taken.")
             return
         }
-        do {
-            try appDelegate.mpcHandler.session.send(messageData, toPeers: appDelegate.mpcHandler.session.connectedPeers, with: .reliable)
-        } catch {
-            print("Error sending")
-        }
+        
+        tappedField.setPlayer(_player: currentPlayer)
+
+        package(json: ["field": tappedField.tag, "player": currentPlayer])
         
         checkResults(with: currentPlayer, at: tappedField.tag)
     }
@@ -200,3 +144,81 @@ extension ViewController: MCBrowserViewControllerDelegate {
     }
 }
 
+// MARK: Game Environment
+extension ViewController {
+    
+    /// Used to disable any further selection so the winner can gloat.
+    func gameOver() {
+        for index in 0 ..< fields.count {
+            fields[index].isUserInteractionEnabled = false
+        }
+        
+    }
+    
+    /// Used to reset the game.
+    func resetGame() {
+        for index in 0 ..< fields.count {
+            fields[index].reset()
+            fields[index].isUserInteractionEnabled = true
+        }
+        
+        currentPlayer = "x"
+    }
+    
+    // TODO: Use collectionView instead of manually implementing a collection of views.
+    /// Used to manually create buttons for the game.
+    func setupFields() {
+        for index in 0 ..< fields.count {
+            let gestureRecognizer = UITapGestureRecognizer(target: self, action: #selector(ViewController.fieldTapped(recognizer:)))
+            gestureRecognizer.numberOfTapsRequired = 1
+            fields[index].addGestureRecognizer(gestureRecognizer)
+        }
+    }
+}
+
+// MARK: Just utility methods for redundant stuff
+extension ViewController {
+    
+    /// Used in logic for checking 3 in a row.
+    func uniqueSpaces(from fieldSet: [Int]) -> Set<String> {
+        var spaces = [String]()
+        for field in fieldSet {
+            spaces.append(fields[field].player ?? "")
+        }
+        
+        return Set(spaces)
+    }
+    
+    /// Used to convert data into native Dictionary object.
+    func unpack(json: Data) -> [String: Any] {
+        var message = [String: Any]()
+        
+        do {
+            message = try! JSONSerialization.jsonObject(with: json, options: .allowFragments) as! [String : Any]
+        } catch {
+            print("error parsing message")
+        }
+        return message
+    }
+    
+    /// Creates data object for IoT/net communications and syncs with other player.
+    func package(json message: [String : Any]) {
+        var messageData : Data
+        do {
+            messageData = try JSONSerialization.data(withJSONObject: message, options: .prettyPrinted)
+        } catch {
+            print("Error packaging message into data.")
+            return
+        }
+        syncPlayers(with: messageData)
+    }
+    
+    /// Sends data objects to other IoT players/devices.
+    func syncPlayers(with message: Data) {
+        do {
+            try appDelegate.mpcHandler.session.send(message, toPeers: appDelegate.mpcHandler.session.connectedPeers, with: .reliable)
+        } catch {
+            print("Error sending")
+        }
+    }
+}
