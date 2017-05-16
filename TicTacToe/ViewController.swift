@@ -14,7 +14,6 @@ class ViewController: UIViewController {
     var appDelegate = UIApplication.shared.delegate as! AppDelegate
     var currentPlayer: String!
 
-
     @IBOutlet var fields: [TTTImageView]!
     
     @IBAction func connectWithPlayer(_ sender: UIBarButtonItem) {
@@ -22,7 +21,6 @@ class ViewController: UIViewController {
 
             return
         }
-        
         appDelegate.mpcHandler.setupBrower()
         appDelegate.mpcHandler.browser.delegate = self
         present(appDelegate.mpcHandler.browser, animated: true, completion: nil)
@@ -48,9 +46,36 @@ class ViewController: UIViewController {
         currentPlayer = "x"
     }
     
+    func checkResults(with player: String, at space: Int) {
+        let wins = [[0,1,2], [3,4,5], [6,7,8], [0,3,6], [1,4,7], [2,5,8], [0,4,8], [2,4,6]]
+        for combo in wins where combo.contains(space){
+            let spaces = uniqueSpaces(from: combo)
+            guard spaces.count > 1 else {
+                popUp(message: "\(player) WINS!!!", action: gameOver())
+                package(json: ["string": "Gsme Over"])
+                break
+            }
+        }
+    }
+    
+    func fieldTapped(recognizer: UITapGestureRecognizer) {
+        let tappedField = recognizer.view as! TTTImageView
+        guard tappedField.isAvailable else {
+            print("Field already selected, no action taken.")
+            return
+        }
+        tappedField.setPlayer(_player: currentPlayer)
+        package(json: ["field": tappedField.tag, "player": currentPlayer])
+        checkResults(with: currentPlayer, at: tappedField.tag)
+    }
+}
+
+
+// MARK: Multipeer Handling
+extension ViewController {
+    
     /// Updates the screen with connection status.
     func peerChangedState(with notification: Notification) {
-        
         guard let userInfo = notification.userInfo else {
             print("No userInfo")
             return
@@ -59,78 +84,39 @@ class ViewController: UIViewController {
             print("Bad State")
             return
         }
-        guard state != MCSessionState.connecting.rawValue else {
+        guard state == MCSessionState.connected.rawValue else {
             print("State is \(String(describing: MCSessionState(rawValue: state)))")
             return
         }
         navigationItem.title = "Connected"
-        
     }
     
+    /// Updates screen with other player's actions.
     func handleReceivedData(with notification: Notification) {
-        
         guard let userInfo = notification.userInfo else {
             print("No Info Received")
             return
         }
-        
-        guard let receivedData = userInfo["data"] as? Data else {
+        guard let receivedData = userInfo["data"] as? Data, let senderID = userInfo["peerID"] as? MCPeerID else {
             print("Data conversion issue")
             return
         }
-        
-        let senderID = userInfo["peerID"] as! MCPeerID
         let senderName = senderID.displayName
-        var message = unpack(json: receivedData)
-        
-        guard message["string"] as? String != "New Game" else {
-            let alert = UIAlertController(title: "Tic Tac Toe", message: "New Game!!!", preferredStyle: .alert)
-            alert.addAction(UIAlertAction(title: "OK", style: .default, handler: { (alert) in
-                self.resetGame()
-            }))
-            present(alert, animated: true, completion: nil)
+        var message = unpack(json: receivedData)        
+        guard message["string"] as? String != "Gsme Over" else {
+            popUp(message: "You Lose!!!", action: gameOver())
             return
         }
-        
+        guard message["string"] as? String != "New Game" else {
+            popUp(message: "New Game!!!", action: resetGame())
+            return
+        }
         guard let space = message["field"] as? Int, let player = message["player"] as? String else {
             print("Missing message info.")
             return
         }
         fields[space].setPlayer(_player: player)
         currentPlayer = player == "o" ? "x" : "o"
-    }
-    
-    func checkResults(with player: String, at space: Int) {
-        let wins = [[0,1,2], [3,4,5], [6,7,8], [0,3,6], [1,4,7], [2,5,8], [0,4,8], [2,4,6]]
-        
-        for fieldSet in wins where fieldSet.contains(space){
-            let spaces = uniqueSpaces(from: fieldSet)
-            
-            guard spaces.count > 1 else {
-                let alert = UIAlertController(title: "Tic Tac Toe", message: "\(player) WINS!!!", preferredStyle: .alert)
-                alert.addAction(UIAlertAction(title: "OK", style: .default, handler:  { (alert) in
-                    self.gameOver()
-                }))
-                present(alert, animated: true, completion: nil)
-                break
-            }
-        }
-    }
-    
-    func fieldTapped(recognizer: UITapGestureRecognizer) {
-        
-        let tappedField = recognizer.view as! TTTImageView
-        
-        guard tappedField.isAvailable else {
-            print("Field already selected, no action taken.")
-            return
-        }
-        
-        tappedField.setPlayer(_player: currentPlayer)
-
-        package(json: ["field": tappedField.tag, "player": currentPlayer])
-        
-        checkResults(with: currentPlayer, at: tappedField.tag)
     }
 }
 
@@ -152,7 +138,6 @@ extension ViewController {
         for index in 0 ..< fields.count {
             fields[index].isUserInteractionEnabled = false
         }
-        
     }
     
     /// Used to reset the game.
@@ -161,7 +146,6 @@ extension ViewController {
             fields[index].reset()
             fields[index].isUserInteractionEnabled = true
         }
-        
         currentPlayer = "x"
     }
     
@@ -185,19 +169,13 @@ extension ViewController {
         for field in fieldSet {
             spaces.append(fields[field].player ?? "")
         }
-        
         return Set(spaces)
     }
     
     /// Used to convert data into native Dictionary object.
     func unpack(json: Data) -> [String: Any] {
         var message = [String: Any]()
-        
-        do {
-            message = try! JSONSerialization.jsonObject(with: json, options: .allowFragments) as! [String : Any]
-        } catch {
-            print("error parsing message")
-        }
+        message = try! JSONSerialization.jsonObject(with: json, options: .allowFragments) as! [String : Any]
         return message
     }
     
@@ -220,5 +198,14 @@ extension ViewController {
         } catch {
             print("Error sending")
         }
+    }
+    
+    /// Pops up a specified alert message and performs associated action.
+    func popUp(message: String, action: ()) {
+        let alert = UIAlertController(title: "Tic Tac Toe", message: message, preferredStyle: .alert)
+        alert.addAction(UIAlertAction(title: "OK", style: .default, handler:  { (alert) in
+            action
+        }))
+        present(alert, animated: true, completion: nil)
     }
 }
