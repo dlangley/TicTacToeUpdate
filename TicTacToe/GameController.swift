@@ -52,6 +52,7 @@ class GameController: UIViewController {
             let spaces = uniqueSpaces(from: combo)
             guard spaces.count > 1 else {
                 popUp(message: "\(player) WINS!!!", action: gameOver())
+                package(json: ["string": "Gsme Over"])
                 break
             }
         }
@@ -137,7 +138,6 @@ extension GameController {
     /// Used to disable any further selection so the winner can gloat.
     func gameOver() {
         grid.collectionView?.isUserInteractionEnabled = false
-        package(json: ["string": "Gsme Over"])
     }
     
     /// Used to reset the game.

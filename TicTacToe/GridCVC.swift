@@ -44,6 +44,7 @@ class GridCVC: UICollectionViewController {
     
     // Allows the ability to use the selected state of the cell.
     override func collectionView(_ collectionView: UICollectionView, shouldSelectItemAt indexPath: IndexPath) -> Bool {
+        (collectionView.cellForItem(at: indexPath) as! FieldCell).player = (delegate?.currentPlayer)!
         return true
     }
     
