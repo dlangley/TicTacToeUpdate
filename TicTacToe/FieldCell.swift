@@ -12,34 +12,17 @@ class FieldCell: UICollectionViewCell {
     
     private var imageView = UIImageView()
     
+    var player = "x"
+    
     override var isSelected: Bool {
         willSet {
-            imageView.image = player! == "x" ? #imageLiteral(resourceName: "x") : #imageLiteral(resourceName: "o")
+            imageView.image = player == "x" ? #imageLiteral(resourceName: "x") : #imageLiteral(resourceName: "o")
         }
     }
     
     override func willMove(toSuperview newSuperview: UIView?) {
         super.willMove(toSuperview: newSuperview)
-        
+        imageView.contentMode = .center
         selectedBackgroundView = imageView
     }
-    
-    var player: String? = "x" {
-        didSet {
-            guard player != nil else {
-                isSelected = false
-                return
-            }
-            isSelected = true
-        }
-    }
-    
-    func setPlayer(_player: String) {
-        player = _player
-    }
-    
-    func reset() {
-        player = nil
-    }
-
 }

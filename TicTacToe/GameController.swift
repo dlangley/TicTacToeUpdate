@@ -1,30 +1,30 @@
 //
-//  ViewController.swift
+//  GameController.swift
 //  TicTacToe
 //
-//  Created by Dwayne Langley on 4/26/17.
+//  Created by Dwayne Langley on 5/19/17.
 //  Copyright © 2017 Dwayne Langley. All rights reserved.
 //
 
 import UIKit
 import MultipeerConnectivity
 
-class ViewController: UIViewController {
+class GameController: UIViewController {
+    
+    private let wins = [[0,1,2], [3,4,5], [6,7,8], [0,3,6], [1,4,7], [2,5,8], [0,4,8], [2,4,6]]
     
     var appDelegate = UIApplication.shared.delegate as! AppDelegate
-    var currentPlayer: String!
-
-    @IBOutlet var fields: [TTTImageView]!
+    var currentPlayer = "x"
+    
+    var grid : GridCVC!
     
     @IBAction func connectWithPlayer(_ sender: UIBarButtonItem) {
         guard appDelegate.mpcHandler.session != nil else {
-
             return
         }
         appDelegate.mpcHandler.setupBrower()
         appDelegate.mpcHandler.browser.delegate = self
         present(appDelegate.mpcHandler.browser, animated: true, completion: nil)
-        
     }
     
     @IBAction func newGame(_ sender: UIBarButtonItem) {
@@ -39,40 +39,39 @@ class ViewController: UIViewController {
         appDelegate.mpcHandler.setupSession()
         appDelegate.mpcHandler.advertiseSelf(shouldAdvertise: true)
         
-        NotificationCenter.default.addObserver(self, selector: #selector(ViewController.peerChangedState(with:)), name: NSNotification.Name.init(rawValue: "MPC_DidChangeState_Notification"), object: nil)
-        NotificationCenter.default.addObserver(self, selector: #selector(ViewController.handleReceivedData(with:)), name: NSNotification.Name.init(rawValue: "MPC_DidReceiveData_Notification"), object: nil)
+        NotificationCenter.default.addObserver(self, selector: #selector(GameController.peerChangedState(with:)), name: NSNotification.Name.init(rawValue: "MPC_DidChangeState_Notification"), object: nil)
+        NotificationCenter.default.addObserver(self, selector: #selector(GameController.handleReceivedData(with:)), name: NSNotification.Name.init(rawValue: "MPC_DidReceiveData_Notification"), object: nil)
         
-        setupFields()
-        currentPlayer = "x"
+        grid = childViewControllers.first as! GridCVC
+        grid.delegate = self
     }
     
+    /// Checks the possible winning combinations for the last selected square.
     func checkResults(with player: String, at space: Int) {
-        let wins = [[0,1,2], [3,4,5], [6,7,8], [0,3,6], [1,4,7], [2,5,8], [0,4,8], [2,4,6]]
         for combo in wins where combo.contains(space){
             let spaces = uniqueSpaces(from: combo)
             guard spaces.count > 1 else {
                 popUp(message: "\(player) WINS!!!", action: gameOver())
-                package(json: ["string": "Gsme Over"])
                 break
             }
         }
     }
+}
+
+extension GameController: GridDelegate {
+    func tapped(space: Int) {
+        package(json: ["field": space, "player": currentPlayer])
+        checkResults(with: currentPlayer, at: space)
+    }
     
-    func fieldTapped(recognizer: UITapGestureRecognizer) {
-        let tappedField = recognizer.view as! TTTImageView
-        guard tappedField.isAvailable else {
-            print("Field already selected, no action taken.")
-            return
-        }
-        tappedField.setPlayer(_player: currentPlayer)
-        package(json: ["field": tappedField.tag, "player": currentPlayer])
-        checkResults(with: currentPlayer, at: tappedField.tag)
+    func notify(_ message: String) {
+        popUp(message: message, action: ())
     }
 }
 
 
 // MARK: Multipeer Handling
-extension ViewController {
+extension GameController {
     
     /// Updates the screen with connection status.
     func peerChangedState(with notification: Notification) {
@@ -102,7 +101,7 @@ extension ViewController {
             return
         }
         let senderName = senderID.displayName
-        var message = unpack(json: receivedData)        
+        var message = unpack(json: receivedData)
         guard message["string"] as? String != "Gsme Over" else {
             popUp(message: "You Lose!!!", action: gameOver())
             return
@@ -115,12 +114,14 @@ extension ViewController {
             print("Missing message info.")
             return
         }
-        fields[space].setPlayer(_player: player)
+        
+        field(at: space).player = player
+        grid.collectionView?.selectItem(at: IndexPath(item: space, section: 0), animated: true, scrollPosition: .top)
         currentPlayer = player == "o" ? "x" : "o"
     }
 }
 
-extension ViewController: MCBrowserViewControllerDelegate {
+extension GameController: MCBrowserViewControllerDelegate {
     func browserViewControllerDidFinish(_ browserViewController: MCBrowserViewController) {
         appDelegate.mpcHandler.browser.dismiss(animated: true, completion: nil)
     }
@@ -131,43 +132,41 @@ extension ViewController: MCBrowserViewControllerDelegate {
 }
 
 // MARK: Game Environment
-extension ViewController {
+extension GameController {
     
     /// Used to disable any further selection so the winner can gloat.
     func gameOver() {
-        for index in 0 ..< fields.count {
-            fields[index].isUserInteractionEnabled = false
-        }
+        grid.collectionView?.isUserInteractionEnabled = false
+        package(json: ["string": "Gsme Over"])
     }
     
     /// Used to reset the game.
     func resetGame() {
-        for index in 0 ..< fields.count {
-            fields[index].reset()
-            fields[index].isUserInteractionEnabled = true
+        for path in (grid.collectionView?.indexPathsForSelectedItems)! {
+            grid.collectionView?.deselectItem(at: path, animated: true)
         }
+        grid.collectionView?.isUserInteractionEnabled = true
         currentPlayer = "x"
-    }
-    
-    // TODO: Use collectionView instead of manually implementing a collection of views.
-    /// Used to manually create buttons for the game.
-    func setupFields() {
-        for index in 0 ..< fields.count {
-            let gestureRecognizer = UITapGestureRecognizer(target: self, action: #selector(ViewController.fieldTapped(recognizer:)))
-            gestureRecognizer.numberOfTapsRequired = 1
-            fields[index].addGestureRecognizer(gestureRecognizer)
-        }
     }
 }
 
 // MARK: Just utility methods for redundant stuff
-extension ViewController {
+extension GameController {
+    
+    /// Normalizes indexes of indexpaths.
+    func field(at index: Int) -> FieldCell {
+        return grid.collectionView?.cellForItem(at: IndexPath(item: index, section: 0)) as! FieldCell
+    }
     
     /// Used in logic for checking 3 in a row.
     func uniqueSpaces(from fieldSet: [Int]) -> Set<String> {
         var spaces = [String]()
-        for field in fieldSet {
-            spaces.append(fields[field].player ?? "")
+        for space in fieldSet {
+            guard field(at: space).isSelected else {
+                spaces.append("")
+                continue
+            }
+            spaces.append(field(at: space).player)
         }
         return Set(spaces)
     }

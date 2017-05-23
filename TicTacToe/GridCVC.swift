@@ -12,6 +12,8 @@ private let reuseIdentifier = "fieldCell"
 
 class GridCVC: UICollectionViewController {
     
+    var delegate : GridDelegate?
+    
     /// Space between cells; real value to be set in IB.
     @IBInspectable var padding: CGFloat = 0
     
@@ -33,7 +35,7 @@ class GridCVC: UICollectionViewController {
     }
 
     override func collectionView(_ collectionView: UICollectionView, cellForItemAt indexPath: IndexPath) -> UICollectionViewCell {
-        let cell = collectionView.dequeueReusableCell(withReuseIdentifier: reuseIdentifier, for: indexPath)
+        let cell = collectionView.dequeueReusableCell(withReuseIdentifier: reuseIdentifier, for: indexPath) as! FieldCell
     
         return cell
     }
@@ -47,12 +49,18 @@ class GridCVC: UICollectionViewController {
     
     // Disables the default ability to unselect a selected cell.
     override func collectionView(_ collectionView: UICollectionView, shouldDeselectItemAt indexPath: IndexPath) -> Bool {
+        delegate?.notify("Can't touch this!!!")
         return false
     }
     
     // Cell was selected here.
     override func collectionView(_ collectionView: UICollectionView, didSelectItemAt indexPath: IndexPath) {
-        print(collectionView.indexPathsForSelectedItems ?? 0)
+        delegate?.tapped(space: indexPath.item)
     }
 }
 
+protocol GridDelegate {
+    var currentPlayer: String { get set }
+    func tapped(space: Int)
+    func notify(_ message: String)
+}
