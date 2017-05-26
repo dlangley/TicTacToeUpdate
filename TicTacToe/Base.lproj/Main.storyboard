@@ -11,10 +11,10 @@
         <capability name="documents saved in the Xcode 8 format" minToolsVersion="8.0"/>
     </dependencies>
     <scenes>
-        <!--No Connection-->
+        <!--GameController-->
         <scene sceneID="Iyg-0Z-pbq">
             <objects>
-                <viewController automaticallyAdjustsScrollViewInsets="NO" id="o5d-Rp-BWK" customClass="GameController" customModule="TicTacToe" customModuleProvider="target" sceneMemberID="viewController">
+                <viewController automaticallyAdjustsScrollViewInsets="NO" id="o5d-Rp-BWK" userLabel="GameController" customClass="GameController" customModule="TicTacToe" customModuleProvider="target" sceneMemberID="viewController">
                     <layoutGuides>
                         <viewControllerLayoutGuide type="top" id="Eth-wW-ED8"/>
                         <viewControllerLayoutGuide type="bottom" id="H2s-fK-u83"/>
@@ -61,7 +61,7 @@
         <scene sceneID="tlx-k7-Qmg">
             <objects>
                 <collectionViewController automaticallyAdjustsScrollViewInsets="NO" id="Eye-7c-FtI" customClass="GridCVC" customModule="TicTacToe" customModuleProvider="target" sceneMemberID="viewController">
-                    <collectionView key="view" clipsSubviews="YES" multipleTouchEnabled="YES" contentMode="scaleAspectFit" misplaced="YES" indicatorStyle="black" dataMode="prototypes" prefetchingEnabled="NO" id="ySt-fC-bF7">
+                    <collectionView key="view" clipsSubviews="YES" multipleTouchEnabled="YES" contentMode="scaleAspectFit" indicatorStyle="black" dataMode="prototypes" prefetchingEnabled="NO" id="ySt-fC-bF7">
                         <rect key="frame" x="0.0" y="0.0" width="343" height="343"/>
                         <autoresizingMask key="autoresizingMask" widthSizable="YES" heightSizable="YES"/>
                         <color key="backgroundColor" white="0.0" alpha="1" colorSpace="calibratedWhite"/>

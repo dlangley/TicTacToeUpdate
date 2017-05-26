@@ -1,5 +1,5 @@
 //
-//  MPCHandler.swift
+//  MPC.swift
 //  TicTacToe
 //
 //  Created by Dwayne Langley on 4/27/17.
@@ -9,11 +9,23 @@
 import UIKit
 import MultipeerConnectivity
 
-class MPCHandler: NSObject {
+var mpcHandler = MPC.handler
+
+class MPC: NSObject {
+    static var handler = MPC()
+    
     var peerID: MCPeerID!
     var session: MCSession!
     var browser: MCBrowserViewController!
     var advertiser: MCAdvertiserAssistant?
+    var delegate: MPCHandlerDelegate?
+    
+    override init() {
+        super.init()
+        setupPeer(with: UIDevice.current.name)
+        setupSession()
+        advertiseSelf(shouldAdvertise: true)
+    }
     
     func setupPeer(with displayName: String) {
         peerID = MCPeerID(displayName: displayName)
@@ -41,12 +53,16 @@ class MPCHandler: NSObject {
     }
 }
 
-extension MPCHandler: MCSessionDelegate {
+protocol MPCHandlerDelegate {
+    func changed(state: MCSessionState, of peer: MCPeerID)
+    func received(data: Data, from peer: MCPeerID)
+}
+
+extension MPC: MCSessionDelegate {
     func session(_ session: MCSession, peer peerID: MCPeerID, didChange state: MCSessionState) {
         
-        let userInfo : [String : Any] = ["peerID": peerID, "state":state.rawValue]
         DispatchQueue.main.async {
-            NotificationCenter.default.post(name: NSNotification.Name(rawValue: "MPC_DidChangeState_Notification"), object: nil, userInfo: userInfo)
+            self.delegate?.changed(state: state, of: peerID)
         }
     }
     
@@ -58,12 +74,10 @@ extension MPCHandler: MCSessionDelegate {
     
     func session(_ session: MCSession, didReceive data: Data, fromPeer peerID: MCPeerID) {
         
-        let userInfo : [String : Any] = ["peerID": peerID, "data": data]
         DispatchQueue.main.async {
-            NotificationCenter.default.post(name: NSNotification.Name(rawValue: "MPC_DidReceiveData_Notification"), object: nil, userInfo: userInfo)
+            self.delegate?.received(data: data, from: peerID)
         }
     }
-    
     
     func session(_ session: MCSession, didStartReceivingResourceWithName resourceName: String, fromPeer peerID: MCPeerID, with progress: Progress) {
         

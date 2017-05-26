@@ -19,12 +19,12 @@ class GameController: UIViewController {
     var grid : GridCVC!
     
     @IBAction func connectWithPlayer(_ sender: UIBarButtonItem) {
-        guard appDelegate.mpcHandler.session != nil else {
+        guard mpcHandler.session != nil else {
             return
         }
-        appDelegate.mpcHandler.setupBrower()
-        appDelegate.mpcHandler.browser.delegate = self
-        present(appDelegate.mpcHandler.browser, animated: true, completion: nil)
+        mpcHandler.setupBrower()
+        mpcHandler.browser.delegate = self
+        present(mpcHandler.browser, animated: true, completion: nil)
     }
     
     @IBAction func newGame(_ sender: UIBarButtonItem) {
@@ -35,13 +35,8 @@ class GameController: UIViewController {
     override func viewDidLoad() {
         super.viewDidLoad()
         // Do any additional setup after loading the view, typically from a nib.
-        appDelegate.mpcHandler.setupPeer(with: UIDevice.current.name)
-        appDelegate.mpcHandler.setupSession()
-        appDelegate.mpcHandler.advertiseSelf(shouldAdvertise: true)
-        
-        NotificationCenter.default.addObserver(self, selector: #selector(GameController.peerChangedState(with:)), name: NSNotification.Name.init(rawValue: "MPC_DidChangeState_Notification"), object: nil)
-        NotificationCenter.default.addObserver(self, selector: #selector(GameController.handleReceivedData(with:)), name: NSNotification.Name.init(rawValue: "MPC_DidReceiveData_Notification"), object: nil)
-        
+         
+        mpcHandler.delegate = self
         grid = childViewControllers.first as! GridCVC
         grid.delegate = self
     }
@@ -72,37 +67,24 @@ extension GameController: GridDelegate {
 
 
 // MARK: Multipeer Handling
-extension GameController {
+extension GameController: MPCHandlerDelegate {
     
     /// Updates the screen with connection status.
-    func peerChangedState(with notification: Notification) {
-        guard let userInfo = notification.userInfo else {
-            print("No userInfo")
-            return
-        }
-        guard let state = userInfo["state"] as? Int else {
-            print("Bad State")
-            return
-        }
-        guard state == MCSessionState.connected.rawValue else {
-            print("State is \(String(describing: MCSessionState(rawValue: state)))")
+    func changed(state: MCSessionState, of peer: MCPeerID) {
+        guard state == .connected else {
+            navigationItem.title = "No Connection"
+            navigationItem.leftBarButtonItem?.isEnabled = true
+            mpcHandler.advertiseSelf(shouldAdvertise: true)
             return
         }
         navigationItem.title = "Connected"
+        navigationItem.leftBarButtonItem?.isEnabled = false
+        mpcHandler.advertiseSelf(shouldAdvertise: false)
     }
     
     /// Updates screen with other player's actions.
-    func handleReceivedData(with notification: Notification) {
-        guard let userInfo = notification.userInfo else {
-            print("No Info Received")
-            return
-        }
-        guard let receivedData = userInfo["data"] as? Data, let senderID = userInfo["peerID"] as? MCPeerID else {
-            print("Data conversion issue")
-            return
-        }
-        let senderName = senderID.displayName
-        var message = unpack(json: receivedData)
+    func received(data: Data, from peer: MCPeerID) {
+        var message = unpack(json: data)
         guard message["string"] as? String != "Gsme Over" else {
             popUp(message: "You Lose!!!", action: gameOver())
             return
@@ -124,11 +106,11 @@ extension GameController {
 
 extension GameController: MCBrowserViewControllerDelegate {
     func browserViewControllerDidFinish(_ browserViewController: MCBrowserViewController) {
-        appDelegate.mpcHandler.browser.dismiss(animated: true, completion: nil)
+        mpcHandler.browser.dismiss(animated: true, completion: nil)
     }
     
     func browserViewControllerWasCancelled(_ browserViewController: MCBrowserViewController) {
-        appDelegate.mpcHandler.browser.dismiss(animated: true, completion: nil)
+        mpcHandler.browser.dismiss(animated: true, completion: nil)
     }
 }
 
@@ -193,7 +175,7 @@ extension GameController {
     /// Sends data objects to other IoT players/devices.
     func syncPlayers(with message: Data) {
         do {
-            try appDelegate.mpcHandler.session.send(message, toPeers: appDelegate.mpcHandler.session.connectedPeers, with: .reliable)
+            try mpcHandler.session.send(message, toPeers: mpcHandler.session.connectedPeers, with: .reliable)
         } catch {
             print("Error sending")
         }
