@@ -37,7 +37,7 @@ class GameController: UIViewController {
         // Do any additional setup after loading the view, typically from a nib.
          
         mpcHandler.delegate = self
-        grid = childViewControllers.first as! GridCVC
+        grid = (children.first as! GridCVC)
         grid.delegate = self
     }
     
